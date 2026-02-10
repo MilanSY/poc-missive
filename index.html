@@ -1,17 +1,50 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>POC Missive</title>
     <script src="https://integrations.missiveapp.com/missive.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f9f9f9; }
-        .card { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .status { font-weight: bold; color: #007bff; margin-bottom: 10px; }
-        button { background: #007bff; color: white; border: none; padding: 10px; border-radius: 5px; width: 100%; cursor: pointer; }
-        .log { font-size: 10px; color: #666; margin-top: 10px; white-space: pre-wrap; }
+        body {
+            font-family: -apple-system, sans-serif;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .status {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .log {
+            font-size: 10px;
+            color: #666;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="card">
@@ -28,46 +61,99 @@
         const logEl = document.getElementById('debug-log');
 
         function log(msg) {
-            logEl.innerText += "\n" + msg;
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.innerText += `\n[${timestamp}] ${msg}`;
             console.log(msg);
         }
 
-        // 1. Initialisation
-        log("Initialisation du script...");
+        // Initialisation
+        log("🚀 Démarrage de l'intégration Missive...");
 
-        // 2. Écouter les changements de conversation
-        Missive.on('change', (payload) => {
-            log("Événement 'change' reçu");
+        // Fonction pour obtenir l'email et les infos du contact
+        function getContactInfo(conversation) {
+            // Essayer de récupérer l'email depuis différentes sources
+            let email = null;
+            let name = null;
+
+            // 1. Depuis le contact s'il existe
+            if (conversation.contact) {
+                email = conversation.contact.emails?.[0] || null;
+                name = conversation.contact.name || null;
+            }
+
+            // 2. Depuis le dernier message
+            if (!email && conversation.messages && conversation.messages.length > 0) {
+                const latestMsg = conversation.messages[conversation.messages.length - 1];
+                if (latestMsg.from_field) {
+                    email = latestMsg.from_field.address;
+                    name = latestMsg.from_field.name;
+                }
+            }
+
+            // 3. Depuis les participants
+            if (!email && conversation.participants && conversation.participants.length > 0) {
+                const participant = conversation.participants[0];
+                email = participant.email || participant.address;
+                name = participant.name;
+            }
+
+            return { email, name };
+        }
+
+        // Écouter les changements de conversation (nouvelle API)
+        Missive.on('change:conversations', (payload) => {
+            log("📨 Événement 'change:conversations' reçu");
+            log("Payload: " + JSON.stringify(payload, null, 2));
             updateDisplay(payload);
         });
 
         function updateDisplay(payload) {
             if (payload && payload.conversations && payload.conversations.length > 0) {
                 const conv = payload.conversations[0];
-                const email = conv.latest_message ? conv.latest_message.from_field.address : "Email non trouvé";
-                
-                statusEl.innerText = "✅ Connecté à Missive";
-                statusEl.style.color = "green";
-                infoEl.innerHTML = `
-                    <strong>Client :</strong> ${email}<br>
-                    <strong>ID :</strong> ${conv.id}
-                `;
-                log("Données mises à jour pour : " + email);
+                log("📋 Conversation ID: " + conv.id);
+
+                const { email, name } = getContactInfo(conv);
+
+                if (email || name) {
+                    statusEl.innerText = "✅ Connecté à Missive";
+                    statusEl.style.color = "green";
+                    infoEl.innerHTML = `
+                        <strong>Client:</strong> ${name || 'Non spécifié'}<br>
+                        <strong>Email:</strong> ${email || 'Non trouvé'}<br>
+                        <strong>Conversation ID:</strong> ${conv.id}<br>
+                        <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}
+                    `;
+                    log("✅ Informations affichées");
+                } else {
+                    log("⚠️ Aucun email trouvé dans cette conversation");
+                    infoEl.innerHTML = `
+                        <strong>Conversation ID:</strong> ${conv.id}<br>
+                        <em>Aucune information de contact disponible</em>
+                    `;
+                }
             } else {
-                log("Payload reçu mais vide.");
+                log("⚠️ Payload vide ou sans conversations");
             }
         }
 
         function testerManuel() {
-            log("Test manuel lancé...");
-            // Demande explicitement le contexte actuel à Missive
-            Missive.fetchContext().then((payload) => {
-                log("Réponse fetchContext reçue");
-                updateDisplay(payload);
+            log("🔍 Test manuel lancé...");
+            // Utilise la nouvelle API pour récupérer le contexte
+            Missive.fetchConversations().then((conversations) => {
+                log("✅ fetchConversations réponse: " + JSON.stringify(conversations, null, 2));
+                updateDisplay({ conversations });
             }).catch(err => {
-                log("Erreur fetchContext: " + err);
+                log("❌ Erreur fetchConversations: " + err.message);
+                console.error(err);
             });
         }
+
+        // Charger automatiquement au démarrage
+        log("📡 Tentative de chargement initial...");
+        setTimeout(() => {
+            testerManuel();
+        }, 500);
     </script>
 </body>
+
 </html>
