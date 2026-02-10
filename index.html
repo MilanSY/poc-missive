@@ -26,16 +26,6 @@
             margin-bottom: 10px;
         }
 
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            width: 100%;
-            cursor: pointer;
-        }
-
         .log {
             font-size: 10px;
             color: #666;
@@ -46,12 +36,9 @@
 </head>
 
 <body>
-
     <div class="card">
-        <div class="status" id="status">🔄 En attente de Missive...</div>
-        <div id="client-info">Sélectionnez une conversation dans Missive.</div>
-        <hr>
-        <button onclick="testerManuel()">Forcer la lecture</button>
+        <div class="status" id="status">En attente...</div>
+        <div id="client-info">Sélectionnez une conversation</div>
         <div class="log" id="debug-log"></div>
     </div>
 
@@ -61,179 +48,48 @@
         const logEl = document.getElementById('debug-log');
 
         function log(msg) {
-            const timestamp = new Date().toLocaleTimeString();
-            logEl.innerText += `\n[${timestamp}] ${msg}`;
-            console.log(msg);
+            logEl.innerText += `\n${msg}`;
         }
 
-        // Récupération des paramètres depuis l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlEmail = urlParams.get('email');
-        const urlName = urlParams.get('name');
-        const urlId = urlParams.get('id');
-        const urlToken = urlParams.get('token');
-
-        log("🚀 Démarrage de l'intégration Missive...");
-        log("📍 URL complète: " + window.location.href);
-
-        // Vérifier si les paramètres sont des templates non remplacés
-        const hasTemplates = urlToken?.includes('{{') || urlEmail?.includes('{{');
-
-        if (hasTemplates) {
-            log("⚠️ Variables Missive non remplacées - L'intégration n'est peut-être pas bien configurée");
-            log("💡 Dans Missive: Settings > Integrations > Créer une nouvelle intégration iframe");
-        }
-
-        log("📥 Paramètres URL:");
-        log("  - Token: " + (urlToken && !hasTemplates ? "✅ Présent" : "❌ Absent"));
-        log("  - Email: " + (urlEmail || "Non fourni"));
-        log("  - Name: " + (urlName || "Non fourni"));
-        log("  - ID: " + (urlId || "Non fourni"));
-
-        // Si on a les infos depuis l'URL, les afficher directement
-        if (urlEmail && !hasTemplates) {
-            statusEl.innerText = "✅ Données depuis URL";
-            statusEl.style.color = "green";
-            infoEl.innerHTML = `
-                <strong>Client:</strong> ${urlName || 'Non spécifié'}<br>
-                <strong>Email:</strong> ${urlEmail}<br>
-                <strong>Conversation ID:</strong> ${urlId || 'Non fourni'}
-            `;
-            log("✅ Informations récupérées depuis l'URL");
-        }
-
-        // Fonction pour obtenir l'email et les infos du contact
-        function getContactInfo(conversation) {
-            // Essayer de récupérer l'email depuis différentes sources
-            let email = null;
-            let name = null;
-
-            // 1. Depuis le contact s'il existe
-            if (conversation.contact) {
-                email = conversation.contact.emails?.[0] || null;
-                name = conversation.contact.name || null;
-            }
-
-            // 2. Depuis le dernier message
-            if (!email && conversation.messages && conversation.messages.length > 0) {
-                const latestMsg = conversation.messages[conversation.messages.length - 1];
-                if (latestMsg.from_field) {
-                    email = latestMsg.from_field.address;
-                    name = latestMsg.from_field.name;
-                }
-            }
-
-            // 3. Depuis les participants
-            if (!email && conversation.participants && conversation.participants.length > 0) {
-                const participant = conversation.participants[0];
-                email = participant.email || participant.address;
-                name = participant.name;
-            }
-
-            return { email, name };
-        }
+        log("POC Missive démarré");
 
         // Écouter les changements de conversation
         Missive.on('change:conversations', (conversations) => {
-            log("📨 Événement 'change:conversations' reçu");
-            log("Type reçu: " + typeof conversations);
-            log("Données: " + JSON.stringify(conversations, null, 2));
+            if (!conversations || conversations.length === 0) return;
 
-            // Si on reçoit des IDs (strings) au lieu d'objets
-            if (conversations && conversations.length > 0 && typeof conversations[0] === 'string') {
-                const conversationId = conversations[0];
-                log("📌 Reçu ID de conversation: " + conversationId);
-                log("🔄 Tentative de récupération des détails avec fetchConversation()...");
+            // Si on reçoit un ID, récupérer les détails
+            if (typeof conversations[0] === 'string') {
+                const id = conversations[0];
+                log(`ID reçu: ${id}`);
 
-                // Utiliser fetchConversation pour obtenir les détails
-                Missive.fetchConversation(conversationId)
-                    .then(conversation => {
-                        log("✅ Détails de conversation récupérés!");
-                        log("Conversation complète: " + JSON.stringify(conversation, null, 2));
+                Missive.fetchConversation(id)
+                    .then(conv => {
+                        if (!conv) return;
 
-                        if (conversation) {
-                            updateDisplay([conversation]);
-                        } else {
-                            log("⚠️ fetchConversation a retourné null");
-                        }
+                        // Extraire email et nom
+                        let email = conv.contact?.emails?.[0] ||
+                            conv.messages?.[conv.messages.length - 1]?.from_field?.address ||
+                            'Non trouvé';
+                        let name = conv.contact?.name ||
+                            conv.messages?.[conv.messages.length - 1]?.from_field?.name ||
+                            'Non spécifié';
+
+                        // Afficher
+                        statusEl.innerText = "✅ Conversation chargée";
+                        statusEl.style.color = "green";
+                        infoEl.innerHTML = `
+                            <strong>Nom:</strong> ${name}<br>
+                            <strong>Email:</strong> ${email}<br>
+                            <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}<br>
+                            <strong>ID:</strong> ${conv.id}
+                        `;
+                        log(`✅ ${name} - ${email}`);
                     })
                     .catch(err => {
-                        log("❌ Erreur fetchConversation: " + err.message);
-                        statusEl.innerText = "⚠️ Impossible de récupérer les détails";
-                        statusEl.style.color = "orange";
-                        infoEl.innerHTML = `
-                            <strong>Conversation ID:</strong> ${conversationId}<br>
-                            <em>Erreur: ${err.message}</em>
-                        `;
+                        log(`Erreur: ${err.message}`);
                     });
-                return;
             }
-
-            updateDisplay(conversations);
         });
-
-        function updateDisplay(conversations) {
-            // Vérifier si on a des conversations valides
-            if (!conversations || conversations.length === 0) {
-                log("⚠️ Aucune conversation");
-                return;
-            }
-
-            // Filtrer les conversations null
-            const validConversations = conversations.filter(c => c !== null && c !== undefined && typeof c === 'object');
-
-            if (validConversations.length === 0) {
-                log("⚠️ Aucune conversation valide (objets)");
-                return;
-            }
-
-            const conv = validConversations[0];
-            log("📋 Conversation trouvée:");
-            log("  Type: " + typeof conv);
-            log("  ID: " + conv.id);
-            log("  Subject: " + (conv.subject || 'Sans sujet'));
-
-            const { email, name } = getContactInfo(conv);
-
-            statusEl.innerText = "✅ Connecté via API Missive";
-            statusEl.style.color = "green";
-
-            infoEl.innerHTML = `
-                <strong>Client:</strong> ${name || 'Non spécifié'}<br>
-                <strong>Email:</strong> ${email || 'Non trouvé'}<br>
-                <strong>Conversation ID:</strong> ${conv.id}<br>
-                <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}
-            `;
-
-            if (email) {
-                log("✅ Email trouvé: " + email);
-            } else {
-                log("⚠️ Aucun email dans cette conversation");
-            }
-        }
-
-        function testerManuel() {
-            log("🔍 Test manuel lancé...");
-            // Utilise la nouvelle API pour récupérer le contexte
-            Missive.fetchConversations().then((conversations) => {
-                log("✅ fetchConversations réponse:");
-                log("  Type: " + typeof conversations);
-                log("  Length: " + (conversations ? conversations.length : 'null'));
-                log("  Contenu: " + JSON.stringify(conversations, null, 2));
-                updateDisplay(conversations);
-            }).catch(err => {
-                log("❌ Erreur fetchConversations: " + err.message);
-                statusEl.innerText = "❌ Erreur de connexion";
-                statusEl.style.color = "red";
-                console.error(err);
-            });
-        }
-
-        // Charger automatiquement au démarrage
-        log("📡 Tentative de chargement initial...");
-        setTimeout(() => {
-            testerManuel();
-        }, 500);
     </script>
 </body>
 
