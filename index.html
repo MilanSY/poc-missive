@@ -66,27 +66,40 @@
             console.log(msg);
         }
 
-        // Récupération du token depuis l'URL
+        // Récupération des paramètres depuis l'URL
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        const urlEmail = urlParams.get('email');
+        const urlName = urlParams.get('name');
+        const urlId = urlParams.get('id');
+        const urlToken = urlParams.get('token');
 
         log("🚀 Démarrage de l'intégration Missive...");
-        log("🔑 Token détecté: " + (token ? "Oui (" + token.substring(0, 10) + "...)" : "⚠️ NON - PROBLÈME!"));
         log("📍 URL complète: " + window.location.href);
 
-        // Initialiser Missive avec le token
-        if (token) {
-            Missive.initialize({ token: token });
-            log("✅ Missive initialisé avec le token");
-        } else {
-            log("❌ ERREUR: Aucun token trouvé dans l'URL!");
-            log("💡 Configurez l'URL dans Missive comme: https://votre-url.vercel.app?token={{token}}");
-            statusEl.innerText = "❌ Configuration incorrecte";
-            statusEl.style.color = "red";
+        // Vérifier si les paramètres sont des templates non remplacés
+        const hasTemplates = urlToken?.includes('{{') || urlEmail?.includes('{{');
+
+        if (hasTemplates) {
+            log("⚠️ Variables Missive non remplacées - L'intégration n'est peut-être pas bien configurée");
+            log("💡 Dans Missive: Settings > Integrations > Créer une nouvelle intégration iframe");
+        }
+
+        log("📥 Paramètres URL:");
+        log("  - Token: " + (urlToken && !hasTemplates ? "✅ Présent" : "❌ Absent"));
+        log("  - Email: " + (urlEmail || "Non fourni"));
+        log("  - Name: " + (urlName || "Non fourni"));
+        log("  - ID: " + (urlId || "Non fourni"));
+
+        // Si on a les infos depuis l'URL, les afficher directement
+        if (urlEmail && !hasTemplates) {
+            statusEl.innerText = "✅ Données depuis URL";
+            statusEl.style.color = "green";
             infoEl.innerHTML = `
-                <strong>Erreur:</strong> Token manquant<br>
-                <em>Configurez l'URL dans Missive avec ?token={{token}}</em>
+                <strong>Client:</strong> ${urlName || 'Non spécifié'}<br>
+                <strong>Email:</strong> ${urlEmail}<br>
+                <strong>Conversation ID:</strong> ${urlId || 'Non fourni'}
             `;
+            log("✅ Informations récupérées depuis l'URL");
         }
 
         // Fonction pour obtenir l'email et les infos du contact
@@ -120,10 +133,26 @@
             return { email, name };
         }
 
-        // Écouter les changements de conversation (nouvelle API)
+        // Écouter les changements de conversation
         Missive.on('change:conversations', (conversations) => {
             log("📨 Événement 'change:conversations' reçu");
-            log("Conversations brutes: " + JSON.stringify(conversations, null, 2));
+            log("Type reçu: " + typeof conversations);
+            log("Données: " + JSON.stringify(conversations, null, 2));
+
+            // Si on reçoit des IDs (strings) au lieu d'objets
+            if (conversations && conversations.length > 0 && typeof conversations[0] === 'string') {
+                log("⚠️ Reçu uniquement des IDs (string) - Token probablement manquant");
+                log("ID de conversation: " + conversations[0]);
+
+                statusEl.innerText = "⚠️ Données limitées (pas de token)";
+                statusEl.style.color = "orange";
+                infoEl.innerHTML = `
+                    <strong>Conversation ID:</strong> ${conversations[0]}<br>
+                    <em>Configurez un token pour obtenir plus d'informations</em>
+                `;
+                return;
+            }
+
             updateDisplay(conversations);
         });
 
@@ -131,32 +160,26 @@
             // Vérifier si on a des conversations valides
             if (!conversations || conversations.length === 0) {
                 log("⚠️ Aucune conversation");
-                statusEl.innerText = "⏸️ En attente de Missive...";
-                statusEl.style.color = "#007bff";
-                infoEl.innerHTML = "Sélectionnez une conversation dans Missive.";
                 return;
             }
 
             // Filtrer les conversations null
-            const validConversations = conversations.filter(c => c !== null && c !== undefined);
+            const validConversations = conversations.filter(c => c !== null && c !== undefined && typeof c === 'object');
 
             if (validConversations.length === 0) {
-                log("⚠️ Toutes les conversations sont null");
-                statusEl.innerText = "⏸️ En attente de Missive...";
-                statusEl.style.color = "#007bff";
-                infoEl.innerHTML = "Sélectionnez une conversation dans Missive.";
+                log("⚠️ Aucune conversation valide (objets)");
                 return;
             }
 
             const conv = validConversations[0];
             log("📋 Conversation trouvée:");
+            log("  Type: " + typeof conv);
             log("  ID: " + conv.id);
             log("  Subject: " + (conv.subject || 'Sans sujet'));
-            log("  Objet complet: " + JSON.stringify(conv, null, 2));
 
             const { email, name } = getContactInfo(conv);
 
-            statusEl.innerText = "✅ Connecté à Missive";
+            statusEl.innerText = "✅ Connecté via API Missive";
             statusEl.style.color = "green";
 
             infoEl.innerHTML = `
@@ -169,7 +192,7 @@
             if (email) {
                 log("✅ Email trouvé: " + email);
             } else {
-                log("⚠️ Aucun email trouvé dans cette conversation");
+                log("⚠️ Aucun email dans cette conversation");
             }
         }
 
