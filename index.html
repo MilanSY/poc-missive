@@ -2,38 +2,71 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <title>POC Missive</title>
     <script src="https://integrations.missiveapp.com/missive.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 15px; }
-        .card { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
-        button { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f9f9f9; }
+        .card { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status { font-weight: bold; color: #007bff; margin-bottom: 10px; }
+        button { background: #007bff; color: white; border: none; padding: 10px; border-radius: 5px; width: 100%; cursor: pointer; }
+        .log { font-size: 10px; color: #666; margin-top: 10px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
-    <h3>Test Intégration CRM</h3>
-    <div id="content" class="card">En attente de données...</div>
-    <button onclick="lancerWorkflow()">Simuler un Workflow</button>
+
+    <div class="card">
+        <div class="status" id="status">🔄 En attente de Missive...</div>
+        <div id="client-info">Sélectionnez une conversation dans Missive.</div>
+        <hr>
+        <button onclick="testerManuel()">Forcer la lecture</button>
+        <div class="log" id="debug-log"></div>
+    </div>
 
     <script>
-        let currentEmail = "";
+        const statusEl = document.getElementById('status');
+        const infoEl = document.getElementById('client-info');
+        const logEl = document.getElementById('debug-log');
 
-        // Initialisation de la communication avec Missive
+        function log(msg) {
+            logEl.innerText += "\n" + msg;
+            console.log(msg);
+        }
+
+        // 1. Initialisation
+        log("Initialisation du script...");
+
+        // 2. Écouter les changements de conversation
         Missive.on('change', (payload) => {
-            const conversation = payload.conversations[0];
-            if (conversation && conversation.latest_message && conversation.latest_message.from_field) {
-                currentEmail = conversation.latest_message.from_field.address;
-                document.getElementById('content').innerHTML = `
-                    <strong>Client identifié :</strong><br>
-                    ${currentEmail}
-                `;
-            } else {
-                document.getElementById('content').innerText = "Aucune conversation sélectionnée.";
-            }
+            log("Événement 'change' reçu");
+            updateDisplay(payload);
         });
 
-        function lancerWorkflow() {
-            if(currentEmail) alert(`🚀 Workflow déclenché pour : ${currentEmail}`);
-            else alert("Pas d'email détecté");
+        function updateDisplay(payload) {
+            if (payload && payload.conversations && payload.conversations.length > 0) {
+                const conv = payload.conversations[0];
+                const email = conv.latest_message ? conv.latest_message.from_field.address : "Email non trouvé";
+                
+                statusEl.innerText = "✅ Connecté à Missive";
+                statusEl.style.color = "green";
+                infoEl.innerHTML = `
+                    <strong>Client :</strong> ${email}<br>
+                    <strong>ID :</strong> ${conv.id}
+                `;
+                log("Données mises à jour pour : " + email);
+            } else {
+                log("Payload reçu mais vide.");
+            }
+        }
+
+        function testerManuel() {
+            log("Test manuel lancé...");
+            // Demande explicitement le contexte actuel à Missive
+            Missive.fetchContext().then((payload) => {
+                log("Réponse fetchContext reçue");
+                updateDisplay(payload);
+            }).catch(err => {
+                log("Erreur fetchContext: " + err);
+            });
         }
     </script>
 </body>
