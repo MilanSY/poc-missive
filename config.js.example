@@ -1,0 +1,5 @@
+// Configuration de l'application
+export const CONFIG = {
+    DIRECTUS_URL: '###',
+    DIRECTUS_TOKEN: '###'
+};

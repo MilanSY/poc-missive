@@ -33,89 +33,77 @@
             white-space: pre-wrap;
         }
 
-        .message {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f5f5f5;
-            border-radius: 5px;
-            max-height: 300px;
-            overflow-y: auto;
+        .artworks-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
 
-        .message-body {
+        .artwork-item {
+            display: flex;
+            gap: 15px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+        }
+
+        .artwork-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .artwork-info {
+            flex: 1;
+        }
+
+        .artwork-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .artwork-artist {
+            color: #007bff;
             font-size: 13px;
-            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        .artwork-meta {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .no-results {
+            color: #999;
+            font-style: italic;
+            padding: 10px;
+        }
+
+        .loading {
+            color: #007bff;
+            padding: 10px;
         }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <div class="status" id="status">En attente...</div>
-        <div id="client-info">Sélectionnez une conversation</div>
-        <div class="log" id="debug-log"></div>
+        <div id="client-info">Sélectionnez un mail</div>
     </div>
 
-    <script>
-        const statusEl = document.getElementById('status');
-        const infoEl = document.getElementById('client-info');
-        const logEl = document.getElementById('debug-log');
+    <div class="artworks-section" id="artworks-section" style="display: none;">
+        <h3 style="margin-top: 0;">🎨 Œuvres qui l'intéressent</h3>
+        <div id="artworks-list"></div>
+    </div>
 
-        function log(msg) {
-            logEl.innerText += `\n${msg}`;
-        }
-
-        log("POC Missive démarré");
-
-        // Écouter les changements de conversation
-        Missive.on('change:conversations', (conversations) => {
-            if (!conversations || conversations.length === 0) return;
-
-            // Si on reçoit un ID, récupérer les détails
-            if (typeof conversations[0] === 'string') {
-                const id = conversations[0];
-                log(`ID reçu: ${id}`);
-
-                Missive.fetchConversation(id)
-                    .then(conv => {
-                        if (!conv) return;
-
-                        // Extraire email et nom
-                        let email = conv.contact?.emails?.[0] ||
-                            conv.messages?.[conv.messages.length - 1]?.from_field?.address ||
-                            'Non trouvé';
-                        let name = conv.contact?.name ||
-                            conv.messages?.[conv.messages.length - 1]?.from_field?.name ||
-                            'Non spécifié';
-
-                        // Extraire le contenu du dernier message
-                        let messageContent = 'Aucun message';
-                        if (conv.messages && conv.messages.length > 0) {
-                            const lastMessage = conv.messages[conv.messages.length - 1];
-                            messageContent = lastMessage.body || lastMessage.preview || 'Contenu non disponible';
-                        }
-
-                        // Afficher
-                        statusEl.innerText = "✅ Conversation chargée";
-                        statusEl.style.color = "green";
-                        infoEl.innerHTML = `
-                            <strong>Nom:</strong> ${name}<br>
-                            <strong>Email:</strong> ${email}<br>
-                            <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}<br>
-                            <strong>ID:</strong> ${conv.id}
-                            <div class="message">
-                                <strong>Message:</strong>
-                                <div class="message-body">${messageContent}</div>
-                            </div>
-                        `;
-                        log(`✅ ${name} - ${email}`);
-                    })
-                    .catch(err => {
-                        log(`Erreur: ${err.message}`);
-                    });
-            }
-        });
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>

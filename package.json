@@ -1,0 +1,23 @@
+{
+  "name": "poc-missive",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MilanSY/poc-missive.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MilanSY/poc-missive/issues"
+  },
+  "homepage": "https://github.com/MilanSY/poc-missive#readme",
+  "dependencies": {
+    "directus": "^11.15.1"
+  }
+}
