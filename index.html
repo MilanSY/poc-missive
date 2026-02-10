@@ -66,8 +66,28 @@
             console.log(msg);
         }
 
-        // Initialisation
+        // Récupération du token depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
         log("🚀 Démarrage de l'intégration Missive...");
+        log("🔑 Token détecté: " + (token ? "Oui (" + token.substring(0, 10) + "...)" : "⚠️ NON - PROBLÈME!"));
+        log("📍 URL complète: " + window.location.href);
+
+        // Initialiser Missive avec le token
+        if (token) {
+            Missive.initialize({ token: token });
+            log("✅ Missive initialisé avec le token");
+        } else {
+            log("❌ ERREUR: Aucun token trouvé dans l'URL!");
+            log("💡 Configurez l'URL dans Missive comme: https://votre-url.vercel.app?token={{token}}");
+            statusEl.innerText = "❌ Configuration incorrecte";
+            statusEl.style.color = "red";
+            infoEl.innerHTML = `
+                <strong>Erreur:</strong> Token manquant<br>
+                <em>Configurez l'URL dans Missive avec ?token={{token}}</em>
+            `;
+        }
 
         // Fonction pour obtenir l'email et les infos du contact
         function getContactInfo(conversation) {
