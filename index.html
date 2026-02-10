@@ -88,6 +88,13 @@
                             conv.messages?.[conv.messages.length - 1]?.from_field?.name ||
                             'Non spécifié';
 
+                        // Extraire le contenu du dernier message
+                        let messageContent = 'Aucun message';
+                        if (conv.messages && conv.messages.length > 0) {
+                            const lastMessage = conv.messages[conv.messages.length - 1];
+                            messageContent = lastMessage.body || lastMessage.preview || 'Contenu non disponible';
+                        }
+
                         // Afficher
                         statusEl.innerText = "✅ Conversation chargée";
                         statusEl.style.color = "green";
@@ -96,6 +103,10 @@
                             <strong>Email:</strong> ${email}<br>
                             <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}<br>
                             <strong>ID:</strong> ${conv.id}
+                            <div class="message">
+                                <strong>Message:</strong>
+                                <div class="message-body">${messageContent}</div>
+                            </div>
                         `;
                         log(`✅ ${name} - ${email}`);
                     })
