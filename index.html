@@ -101,38 +101,55 @@
         }
 
         // Écouter les changements de conversation (nouvelle API)
-        Missive.on('change:conversations', (payload) => {
+        Missive.on('change:conversations', (conversations) => {
             log("📨 Événement 'change:conversations' reçu");
-            log("Payload: " + JSON.stringify(payload, null, 2));
-            updateDisplay(payload);
+            log("Conversations brutes: " + JSON.stringify(conversations, null, 2));
+            updateDisplay(conversations);
         });
 
-        function updateDisplay(payload) {
-            if (payload && payload.conversations && payload.conversations.length > 0) {
-                const conv = payload.conversations[0];
-                log("📋 Conversation ID: " + conv.id);
+        function updateDisplay(conversations) {
+            // Vérifier si on a des conversations valides
+            if (!conversations || conversations.length === 0) {
+                log("⚠️ Aucune conversation");
+                statusEl.innerText = "⏸️ En attente de Missive...";
+                statusEl.style.color = "#007bff";
+                infoEl.innerHTML = "Sélectionnez une conversation dans Missive.";
+                return;
+            }
 
-                const { email, name } = getContactInfo(conv);
+            // Filtrer les conversations null
+            const validConversations = conversations.filter(c => c !== null && c !== undefined);
 
-                if (email || name) {
-                    statusEl.innerText = "✅ Connecté à Missive";
-                    statusEl.style.color = "green";
-                    infoEl.innerHTML = `
-                        <strong>Client:</strong> ${name || 'Non spécifié'}<br>
-                        <strong>Email:</strong> ${email || 'Non trouvé'}<br>
-                        <strong>Conversation ID:</strong> ${conv.id}<br>
-                        <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}
-                    `;
-                    log("✅ Informations affichées");
-                } else {
-                    log("⚠️ Aucun email trouvé dans cette conversation");
-                    infoEl.innerHTML = `
-                        <strong>Conversation ID:</strong> ${conv.id}<br>
-                        <em>Aucune information de contact disponible</em>
-                    `;
-                }
+            if (validConversations.length === 0) {
+                log("⚠️ Toutes les conversations sont null");
+                statusEl.innerText = "⏸️ En attente de Missive...";
+                statusEl.style.color = "#007bff";
+                infoEl.innerHTML = "Sélectionnez une conversation dans Missive.";
+                return;
+            }
+
+            const conv = validConversations[0];
+            log("📋 Conversation trouvée:");
+            log("  ID: " + conv.id);
+            log("  Subject: " + (conv.subject || 'Sans sujet'));
+            log("  Objet complet: " + JSON.stringify(conv, null, 2));
+
+            const { email, name } = getContactInfo(conv);
+
+            statusEl.innerText = "✅ Connecté à Missive";
+            statusEl.style.color = "green";
+
+            infoEl.innerHTML = `
+                <strong>Client:</strong> ${name || 'Non spécifié'}<br>
+                <strong>Email:</strong> ${email || 'Non trouvé'}<br>
+                <strong>Conversation ID:</strong> ${conv.id}<br>
+                <strong>Sujet:</strong> ${conv.subject || 'Sans sujet'}
+            `;
+
+            if (email) {
+                log("✅ Email trouvé: " + email);
             } else {
-                log("⚠️ Payload vide ou sans conversations");
+                log("⚠️ Aucun email trouvé dans cette conversation");
             }
         }
 
@@ -140,10 +157,15 @@
             log("🔍 Test manuel lancé...");
             // Utilise la nouvelle API pour récupérer le contexte
             Missive.fetchConversations().then((conversations) => {
-                log("✅ fetchConversations réponse: " + JSON.stringify(conversations, null, 2));
-                updateDisplay({ conversations });
+                log("✅ fetchConversations réponse:");
+                log("  Type: " + typeof conversations);
+                log("  Length: " + (conversations ? conversations.length : 'null'));
+                log("  Contenu: " + JSON.stringify(conversations, null, 2));
+                updateDisplay(conversations);
             }).catch(err => {
                 log("❌ Erreur fetchConversations: " + err.message);
+                statusEl.innerText = "❌ Erreur de connexion";
+                statusEl.style.color = "red";
                 console.error(err);
             });
         }
