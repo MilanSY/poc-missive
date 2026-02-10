@@ -141,15 +141,31 @@
 
             // Si on reçoit des IDs (strings) au lieu d'objets
             if (conversations && conversations.length > 0 && typeof conversations[0] === 'string') {
-                log("⚠️ Reçu uniquement des IDs (string) - Token probablement manquant");
-                log("ID de conversation: " + conversations[0]);
+                const conversationId = conversations[0];
+                log("📌 Reçu ID de conversation: " + conversationId);
+                log("🔄 Tentative de récupération des détails avec fetchConversation()...");
 
-                statusEl.innerText = "⚠️ Données limitées (pas de token)";
-                statusEl.style.color = "orange";
-                infoEl.innerHTML = `
-                    <strong>Conversation ID:</strong> ${conversations[0]}<br>
-                    <em>Configurez un token pour obtenir plus d'informations</em>
-                `;
+                // Utiliser fetchConversation pour obtenir les détails
+                Missive.fetchConversation(conversationId)
+                    .then(conversation => {
+                        log("✅ Détails de conversation récupérés!");
+                        log("Conversation complète: " + JSON.stringify(conversation, null, 2));
+
+                        if (conversation) {
+                            updateDisplay([conversation]);
+                        } else {
+                            log("⚠️ fetchConversation a retourné null");
+                        }
+                    })
+                    .catch(err => {
+                        log("❌ Erreur fetchConversation: " + err.message);
+                        statusEl.innerText = "⚠️ Impossible de récupérer les détails";
+                        statusEl.style.color = "orange";
+                        infoEl.innerHTML = `
+                            <strong>Conversation ID:</strong> ${conversationId}<br>
+                            <em>Erreur: ${err.message}</em>
+                        `;
+                    });
                 return;
             }
 
