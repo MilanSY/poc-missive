@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://integrations.missiveapp.com/missive.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 15px; }
+        .card { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+        button { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h3>Test Intégration CRM</h3>
+    <div id="content" class="card">En attente de données...</div>
+    <button onclick="lancerWorkflow()">Simuler un Workflow</button>
+
+    <script>
+        let currentEmail = "";
+
+        // Initialisation de la communication avec Missive
+        Missive.on('change', (payload) => {
+            const conversation = payload.conversations[0];
+            if (conversation && conversation.latest_message && conversation.latest_message.from_field) {
+                currentEmail = conversation.latest_message.from_field.address;
+                document.getElementById('content').innerHTML = `
+                    <strong>Client identifié :</strong><br>
+                    ${currentEmail}
+                `;
+            } else {
+                document.getElementById('content').innerText = "Aucune conversation sélectionnée.";
+            }
+        });
+
+        function lancerWorkflow() {
+            if(currentEmail) alert(`🚀 Workflow déclenché pour : ${currentEmail}`);
+            else alert("Pas d'email détecté");
+        }
+    </script>
+</body>
+</html>
