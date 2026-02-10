@@ -86,7 +86,7 @@ function renderArtworkItem(work) {
     }
 
     const imageUrl = images[0] || 'https://via.placeholder.com/120';
-    const artistName = work.artist_id?.name || 'Artiste inconnu';
+    const artistName = work.artist_name || 'Artiste inconnu';
     const categoryName = work.category_id?.name || '';
 
     // SVG fallback pour les images manquantes
