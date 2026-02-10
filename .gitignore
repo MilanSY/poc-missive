@@ -1,0 +1,23 @@
+# Environment variables
+.env
+*.txt
+
+# Python
+*.py
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Scraped data
+scraped_data.json
+
+# Database
+*.sql.backup
